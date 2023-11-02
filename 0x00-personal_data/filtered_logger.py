@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+
 """
-Definition of filter_datum function that returns an obfuscated log message
+Definition of a logging application that obfuscates sensitive information in log messages.
 """
+
 from typing import List
 import re
 import logging
@@ -12,25 +14,27 @@ import mysql.connector
 PII_FIELDS = ('name', 'email', 'phone', 'ssn', 'password')
 
 
-def filter_datum(fields: List[str], redaction: str,
-                 message: str, separator: str) -> str:
+def filter_datum(fields: List[str], redaction: str, message: str, separator: str) -> str:
     """
-    Return an obfuscated log message
+    Return an obfuscated log message.
+
     Args:
-        fields (list): list of strings indicating fields to obfuscate
-        redaction (str): what the field will be obfuscated to
-        message (str): the log line to obfuscate
-        separator (str): the character separating the fields
+        fields (List[str]): List of strings indicating fields to obfuscate.
+        redaction (str): What the field will be obfuscated to.
+        message (str): The log line to obfuscate.
+        separator (str): The character separating the fields.
+
+    Returns:
+        str: The obfuscated log message.
     """
     for field in fields:
-        message = re.sub(field+'=.*?'+separator,
-                         field+'='+redaction+separator, message)
+        # Obfuscate the specified fields in the log message using regular expressions
+        message = re.sub(field + '=.*?' + separator, field + '=' + redaction + separator, message)
     return message
 
 
 class RedactingFormatter(logging.Formatter):
-    """ Redacting Formatter class
-        """
+    """Redacting Formatter class."""
 
     REDACTION = "***"
     FORMAT = "[HOLBERTON] %(name)s %(levelname)s %(asctime)-15s: %(message)s"
@@ -42,21 +46,22 @@ class RedactingFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """
-        redact the message of LogRecord instance
+        Redact the message of LogRecord instance.
+
         Args:
-        record (logging.LogRecord): LogRecord instance containing message
-        Return:
-            formatted string
+            record (logging.LogRecord): LogRecord instance containing message.
+
+        Returns:
+            str: The formatted string.
         """
         message = super(RedactingFormatter, self).format(record)
-        redacted = filter_datum(self.fields, self.REDACTION,
-                                message, self.SEPARATOR)
+        redacted = filter_datum(self.fields, self.REDACTION, message, self.SEPARATOR)
         return redacted
 
 
 def get_logger() -> logging.Logger:
     """
-    Return a logging.Logger object
+    Return a logging.Logger object.
     """
     logger = logging.getLogger("user_data")
     logger.setLevel(logging.INFO)
@@ -73,21 +78,22 @@ def get_logger() -> logging.Logger:
 
 def get_db() -> mysql.connector.connection.MySQLConnection:
     """
+    Establish a connection to the MySQL database.
+
+    Returns:
+        mysql.connector.connection.MySQLConnection: The database connection object.
     """
     user = os.getenv('PERSONAL_DATA_DB_USERNAME') or "root"
     passwd = os.getenv('PERSONAL_DATA_DB_PASSWORD') or ""
     host = os.getenv('PERSONAL_DATA_DB_HOST') or "localhost"
     db_name = os.getenv('PERSONAL_DATA_DB_NAME')
-    conn = mysql.connector.connect(user=user,
-                                   password=passwd,
-                                   host=host,
-                                   database=db_name)
+    conn = mysql.connector.connect(user=user, password=passwd, host=host, database=db_name)
     return conn
 
 
 def main():
     """
-    main entry point
+    Main entry point of the application.
     """
     db = get_db()
     logger = get_logger()
@@ -95,6 +101,7 @@ def main():
     cursor.execute("SELECT * FROM users;")
     fields = cursor.column_names
     for row in cursor:
+        # Format the fetched row as a log message and log it
         message = "".join("{}={}; ".format(k, v) for k, v in zip(fields, row))
         logger.info(message.strip())
     cursor.close()
